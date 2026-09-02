@@ -6,10 +6,12 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.event.ItemEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -19,37 +21,45 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JColorChooser;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 /**
- * Configuration dialog for marquee text, colors, font family/size, and styles.
+ * Configuration window for marquee text, colors, font family/size, and styles.
  * Changes are written to {@link java.util.prefs.Preferences} as they happen.
  */
-public final class SettingsDialog extends JDialog {
+public final class SettingsDialog extends JFrame {
 
     private final ScreensaverConfig config;
     private boolean launchingScreensaver;
 
     public SettingsDialog(ScreensaverConfig config) {
-        super((Frame) null, "Goody's Scrolling Text Screensaver", false);
+        super("Goody's Scrolling Text Screensaver");
         this.config = config;
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setMinimumSize(new Dimension(640, 560));
+        setMinimumSize(new Dimension(520, 420));
 
         var root = new JPanel(new BorderLayout(0, 12));
         root.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
         root.add(buildHeader(), BorderLayout.NORTH);
-        root.add(buildForm(), BorderLayout.CENTER);
+        var formScroll = new JScrollPane(
+                buildForm(),
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        formScroll.setBorder(null);
+        formScroll.getVerticalScrollBar().setUnitIncrement(16);
+        root.add(formScroll, BorderLayout.CENTER);
         root.add(buildPreviewAndActions(), BorderLayout.SOUTH);
         setContentPane(root);
         pack();
+        fitToScreen();
         setLocationRelativeTo(null);
 
         addWindowListener(new WindowAdapter() {
@@ -63,11 +73,21 @@ public final class SettingsDialog extends JDialog {
         });
     }
 
+    private void fitToScreen() {
+        GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice()
+                .getDefaultConfiguration();
+        Rectangle screen = gc.getBounds();
+        int width = Math.min(Math.max(getWidth(), 520), Math.max(480, screen.width - 40));
+        int height = Math.min(Math.max(getHeight(), 420), Math.max(400, screen.height - 80));
+        setSize(width, height);
+    }
+
     private JPanel buildHeader() {
         var header = new JPanel(new BorderLayout());
         var title = new JLabel("Preferences & Settings");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
-        var subtitle = new JLabel("Saved automatically  •  /c config  •  /s fullscreen  •  Java 21");
+        var subtitle = new JLabel("Saved automatically  •  message, font, colors, speed");
         subtitle.setForeground(new Color(90, 90, 90));
         header.add(title, BorderLayout.NORTH);
         header.add(subtitle, BorderLayout.SOUTH);
@@ -95,11 +115,12 @@ public final class SettingsDialog extends JDialog {
         });
         addRow(form, constraints, 1, "Font family", fontBox);
 
-        var sizeSlider = new JSlider(8, 300, config.getFontSize());
+        int fontSize = Math.clamp(config.getFontSize(), 8, 300);
+        var sizeSlider = new JSlider(8, 300, fontSize);
         sizeSlider.setMajorTickSpacing(48);
         sizeSlider.setMinorTickSpacing(8);
         sizeSlider.setPaintTicks(true);
-        var sizeValue = new JLabel(sizeLabel(config.getFontSize()), JLabel.RIGHT);
+        var sizeValue = new JLabel(sizeLabel(fontSize), JLabel.RIGHT);
         sizeValue.setPreferredSize(new Dimension(64, 16));
         sizeSlider.addChangeListener(event -> persist(() -> {
             config.setFontSize(sizeSlider.getValue());
@@ -125,11 +146,12 @@ public final class SettingsDialog extends JDialog {
         addRow(form, constraints, 4, "Text color", colorRow(config.getTextColor(), color -> persist(() -> config.setTextColor(color))));
         addRow(form, constraints, 5, "Background", colorRow(config.getBackgroundColor(), color -> persist(() -> config.setBackgroundColor(color))));
 
-        var speedSlider = new JSlider(10, 400, config.getPixelsPerSecond());
+        int speed = Math.clamp(config.getPixelsPerSecond(), 10, 600);
+        var speedSlider = new JSlider(10, 600, speed);
         speedSlider.setMajorTickSpacing(100);
         speedSlider.setMinorTickSpacing(20);
         speedSlider.setPaintTicks(true);
-        var speedValue = new JLabel(speedLabel(config.getPixelsPerSecond()), JLabel.RIGHT);
+        var speedValue = new JLabel(speedLabel(speed), JLabel.RIGHT);
         speedValue.setPreferredSize(new Dimension(88, 16));
         speedSlider.addChangeListener(event -> persist(() -> {
             config.setPixelsPerSecond(speedSlider.getValue());
@@ -147,7 +169,7 @@ public final class SettingsDialog extends JDialog {
         var south = new JPanel(new BorderLayout(0, 10));
 
         var preview = new MarqueePanel(config);
-        preview.setPreferredSize(new Dimension(600, 110));
+        preview.setPreferredSize(new Dimension(520, 90));
         preview.setBorder(BorderFactory.createLineBorder(new Color(40, 40, 40)));
         south.add(preview, BorderLayout.CENTER);
 
@@ -161,7 +183,7 @@ public final class SettingsDialog extends JDialog {
         buttons.add(start);
         south.add(buttons, BorderLayout.SOUTH);
 
-        var hint = new JLabel("Any key or a significant mouse move exits the full-screen saver.");
+        var hint = new JLabel("Use this window for options. XScreensaver's Settings button does not open it.");
         hint.setForeground(new Color(90, 90, 90));
         south.add(hint, BorderLayout.NORTH);
         return south;
@@ -172,7 +194,7 @@ public final class SettingsDialog extends JDialog {
         launchingScreensaver = true;
         setVisible(false);
         dispose();
-        new MarqueeFrame(config.copy(), () -> System.exit(0)).showFullScreen();
+        new MarqueeFrame(config.copy(), () -> System.exit(0), true).showFullScreen();
     }
 
     private void persist(Runnable update) {
@@ -185,6 +207,7 @@ public final class SettingsDialog extends JDialog {
         var swatch = new JPanel();
         swatch.setPreferredSize(new Dimension(36, 22));
         swatch.setBackground(initial);
+        swatch.setOpaque(true);
         swatch.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY));
         var choose = new JButton("Choose...");
         choose.addActionListener(event -> {

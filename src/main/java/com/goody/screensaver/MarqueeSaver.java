@@ -1,5 +1,6 @@
 package com.goody.screensaver;
 
+import java.util.Locale;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -16,27 +17,73 @@ public final class MarqueeSaver {
     }
 
     public static void main(String[] args) {
+        // Exclusive OpenGL Java2D on Raspberry Pi often paints a black window.
+        System.setProperty("sun.java2d.opengl", "false");
+
         LaunchMode mode = LaunchMode.fromArgs(args);
-        if (mode == LaunchMode.PREVIEW) {
-            return;
-        }
+        boolean xscreensaver = launchedByXscreensaver(args);
 
         SwingUtilities.invokeLater(() -> {
             installLookAndFeel();
             ScreensaverConfig config = ScreensaverConfig.load();
-            switch (mode) {
-                case FULLSCREEN -> new MarqueeFrame(config, () -> System.exit(0)).showFullScreen();
-                case CONFIG, PREVIEW -> new SettingsDialog(config).setVisible(true);
+            if (mode == LaunchMode.CONFIG) {
+                new SettingsDialog(config).setVisible(true);
+            } else {
+                new MarqueeFrame(config, () -> System.exit(0), !xscreensaver).showFullScreen();
             }
         });
     }
 
     private static void installLookAndFeel() {
         try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+            if (os.contains("linux")) {
+                // GTK L&F on Raspberry Pi OS often leaves Swing dialogs blank.
+                UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+            } else {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            }
         } catch (Exception ignored) {
-            // Keep the default cross-platform look if the system L&F is unavailable.
+            try {
+                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            } catch (Exception ignoredAgain) {
+                // Keep the default look if nothing else loads.
+            }
         }
+    }
+
+    static boolean launchedByXscreensaver(String[] args) {
+        if (System.getenv("XSCREENSAVER_WINDOW") != null) {
+            return true;
+        }
+        for (String raw : args) {
+            String key = optionKey(raw);
+            if (key.equalsIgnoreCase("window-id")
+                    || key.equalsIgnoreCase("window_id")
+                    || key.equalsIgnoreCase("root")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static String optionKey(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String arg = stripPrefix(raw);
+        int equals = arg.indexOf('=');
+        return equals > 0 ? arg.substring(0, equals) : arg;
+    }
+
+    static String stripPrefix(String raw) {
+        if (raw.startsWith("--")) {
+            return raw.substring(2);
+        }
+        if (raw.startsWith("-") || raw.startsWith("/")) {
+            return raw.substring(1);
+        }
+        return raw;
     }
 
     enum LaunchMode {
@@ -47,33 +94,27 @@ public final class MarqueeSaver {
         static LaunchMode fromArgs(String[] args) {
             LaunchMode mode = CONFIG;
             for (String raw : args) {
-                if (raw == null || raw.isBlank()) {
+                String arg = optionKey(raw);
+                if (arg.isEmpty()) {
                     continue;
                 }
-                String arg = stripPrefix(raw);
-                if (arg.equalsIgnoreCase("s") || arg.equalsIgnoreCase("fullscreen")) {
+                if (arg.equalsIgnoreCase("s")
+                        || arg.equalsIgnoreCase("fullscreen")
+                        || arg.equalsIgnoreCase("root")) {
                     mode = FULLSCREEN;
-                } else if (startsWithIgnoreCase(arg, "c") || arg.equalsIgnoreCase("config")) {
+                } else if (arg.equalsIgnoreCase("c")
+                        || arg.equalsIgnoreCase("config")
+                        || arg.equalsIgnoreCase("prefs")
+                        || arg.toLowerCase(Locale.ROOT).startsWith("c:")) {
                     mode = CONFIG;
-                } else if (startsWithIgnoreCase(arg, "p") || arg.equalsIgnoreCase("preview")) {
+                } else if (arg.equalsIgnoreCase("p")
+                        || arg.equalsIgnoreCase("preview")
+                        || arg.equalsIgnoreCase("window-id")
+                        || arg.equalsIgnoreCase("window_id")) {
                     mode = PREVIEW;
                 }
             }
             return mode;
-        }
-
-        private static String stripPrefix(String raw) {
-            if (raw.startsWith("--")) {
-                return raw.substring(2);
-            }
-            if (raw.startsWith("-") || raw.startsWith("/")) {
-                return raw.substring(1);
-            }
-            return raw;
-        }
-
-        private static boolean startsWithIgnoreCase(String value, String prefix) {
-            return value.regionMatches(true, 0, prefix, 0, prefix.length());
         }
     }
 }

@@ -1,33 +1,48 @@
 package com.goody.screensaver;
 
 import java.awt.Cursor;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
+import java.util.Locale;
 import javax.swing.JFrame;
 
 /**
  * Undecorated full-screen window that hosts the scrolling marquee.
- * Any keypress or significant mouse movement exits the process.
+ * A key or click exits after a short grace period. Mouse-move exit is
+ * used for standalone launches only; xscreensaver generates motion events
+ * that would otherwise dismiss the preview immediately.
  */
 public final class MarqueeFrame extends JFrame {
 
     private static final int MOUSE_MOVE_EXIT_PIXELS = 12;
+    private static final long CLICK_GRACE_MS = 400L;
+    private static final long MOVE_GRACE_MS = 1200L;
 
     private final GraphicsDevice device;
     private final Runnable onExit;
+    private final boolean exitOnMouseMove;
     private boolean exited;
     private Point firstMousePoint;
+    private long shownAtMillis;
 
     public MarqueeFrame(ScreensaverConfig config, Runnable onExit) {
+        this(config, onExit, true);
+    }
+
+    public MarqueeFrame(ScreensaverConfig config, Runnable onExit, boolean exitOnMouseMove) {
         super("Goody's Scrolling Text Screensaver");
         this.onExit = onExit;
+        this.exitOnMouseMove = exitOnMouseMove;
         this.device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
 
         setUndecorated(true);
@@ -43,7 +58,15 @@ public final class MarqueeFrame extends JFrame {
     }
 
     public void showFullScreen() {
-        if (device.isFullScreenSupported()) {
+        shownAtMillis = System.currentTimeMillis();
+        GraphicsConfiguration gc = device.getDefaultConfiguration();
+        Rectangle bounds = gc.getBounds();
+        setBounds(bounds);
+
+        // Exclusive AWT fullscreen on Raspberry Pi X11 frequently stays black
+        // until the window is torn down. A maximized undecorated window paints.
+        if (!isLinux() && device.isFullScreenSupported()) {
+            setVisible(true);
             device.setFullScreenWindow(this);
         } else {
             setExtendedState(MAXIMIZED_BOTH);
@@ -58,16 +81,35 @@ public final class MarqueeFrame extends JFrame {
         KeyAdapter keys = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
-                exitScreensaver();
+                if (!stillInGracePeriod(CLICK_GRACE_MS)) {
+                    exitScreensaver();
+                }
             }
 
             @Override
             public void keyTyped(KeyEvent event) {
-                exitScreensaver();
+                if (!stillInGracePeriod(CLICK_GRACE_MS)) {
+                    exitScreensaver();
+                }
             }
         };
         addKeyListener(keys);
         panel.addKeyListener(keys);
+
+        MouseAdapter clicks = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent event) {
+                if (!stillInGracePeriod(CLICK_GRACE_MS)) {
+                    exitScreensaver();
+                }
+            }
+        };
+        addMouseListener(clicks);
+        panel.addMouseListener(clicks);
+
+        if (!exitOnMouseMove) {
+            return;
+        }
 
         MouseMotionAdapter mouse = new MouseMotionAdapter() {
             @Override
@@ -84,7 +126,15 @@ public final class MarqueeFrame extends JFrame {
         panel.addMouseMotionListener(mouse);
     }
 
+    private boolean stillInGracePeriod(long graceMs) {
+        return System.currentTimeMillis() - shownAtMillis < graceMs;
+    }
+
     private void onMouseMoved(Point point) {
+        if (stillInGracePeriod(MOVE_GRACE_MS)) {
+            firstMousePoint = point;
+            return;
+        }
         if (firstMousePoint == null) {
             firstMousePoint = point;
             return;
@@ -112,8 +162,16 @@ public final class MarqueeFrame extends JFrame {
         onExit.run();
     }
 
+    private static boolean isLinux() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("linux");
+    }
+
     private static Cursor invisibleCursor() {
-        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        return Toolkit.getDefaultToolkit().createCustomCursor(image, new Point(0, 0), "hidden");
+        try {
+            BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            return Toolkit.getDefaultToolkit().createCustomCursor(image, new Point(0, 0), "hidden");
+        } catch (RuntimeException ex) {
+            return Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR);
+        }
     }
 }

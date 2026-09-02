@@ -19,7 +19,7 @@ chmod +x build-jar.sh install.sh uninstall.sh goodys-marquee-screensaver
 ./install.sh
 ```
 
-Then pick **Goody's Marquee** in your desktop's screensaver settings, or open **Goody's Marquee Settings** from the application menu.
+Then pick **Goody's Marquee** in your desktop's screensaver settings. For message, font, colors, and speed, open **Goody's Marquee Settings** from the application menu (xscreensaver's own Settings button does not show those options).
 
 ## Raspberry Pi OS
 
@@ -30,6 +30,7 @@ Bookworm and later default to Wayland (labwc), where XScreensaver settings often
 3. Open **XScreensaver settings** once (this creates `~/.xscreensaver`)
 4. Run `./install.sh` again so it can register **Goody's Marquee**
 5. Close and reopen XScreensaver settings, then pick **Goody's Marquee**
+6. Open **Goody's Marquee Settings** from the application menu to edit text, font, colors, and speed
 
 If you already opened XScreensaver settings before re-running the installer, that last `./install.sh` is the step that makes it appear in the list.
 

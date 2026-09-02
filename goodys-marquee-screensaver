@@ -5,4 +5,5 @@ if ! command -v java >/dev/null 2>&1; then
     echo "Java 21 or later is required (java not found on PATH)." >&2
     exit 1
 fi
-exec java -jar "$ROOT/GoodysMarquee.jar" "$@"
+# OpenGL Java2D on Raspberry Pi often produces a black window.
+exec java -Dsun.java2d.opengl=false -jar "$ROOT/GoodysMarquee.jar" "$@"

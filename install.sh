@@ -8,11 +8,9 @@ if ! command -v java >/dev/null 2>&1; then
     exit 1
 fi
 
-if [ ! -f "$ROOT/GoodysMarquee.jar" ]; then
-    echo "Building jar..."
-    chmod +x "$ROOT/build-jar.sh"
-    "$ROOT/build-jar.sh"
-fi
+echo "Building jar..."
+chmod +x "$ROOT/build-jar.sh"
+"$ROOT/build-jar.sh"
 
 PREFIX="${XDG_DATA_HOME:-$HOME/.local/share}/goodys-marquee"
 APPDIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
