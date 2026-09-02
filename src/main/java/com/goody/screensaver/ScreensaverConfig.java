@@ -144,10 +144,47 @@ public final class ScreensaverConfig {
         }
     }
 
+    /**
+     * Reads flags from the Goody's line in {@code ~/.xscreensaver} so the
+     * Accessories settings window matches what XScreensaver last wrote.
+     */
+    public void applyXscreensaverFile() {
+        Path rc = Path.of(System.getProperty("user.home"), ".xscreensaver");
+        if (!Files.isRegularFile(rc)) {
+            return;
+        }
+        try {
+            String text = Files.readString(rc);
+            String marker = "goodys-marquee-screensaver";
+            int markerAt = text.indexOf(marker);
+            if (markerAt < 0) {
+                return;
+            }
+            int lineStart = text.lastIndexOf('\n', markerAt - 1) + 1;
+            int lineEnd = text.indexOf('\n', markerAt);
+            if (lineEnd < 0) {
+                lineEnd = text.length();
+            }
+            String line = text.substring(lineStart, lineEnd);
+            int localMarker = markerAt - lineStart;
+            int argsStart = localMarker + marker.length();
+            if (argsStart > line.length()) {
+                return;
+            }
+            String args = line.substring(argsStart).trim();
+            if (args.endsWith("\\n\\")) {
+                args = args.substring(0, args.length() - 3).trim();
+            }
+            applyCommandLine(tokenizeCommandLine(args).toArray(String[]::new));
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, "Unable to read ~/.xscreensaver", ex);
+        }
+    }
+
     private String xscreensaverArgs() {
         return "--fullscreen"
-                + " --message " + quoteForXscreensaver(displayMessage())
-                + " --font-family " + quoteForXscreensaver(fontFamily)
+                + " --message " + quoteForXscreensaver(asciiSafe(displayMessage()))
+                + " --font-family " + quoteForXscreensaver(asciiSafe(fontFamily))
                 + " --font-size " + fontSize
                 + (bold ? " --bold" : " --no-bold")
                 + (italic ? " --italic" : " --no-italic")
@@ -157,9 +194,74 @@ public final class ScreensaverConfig {
                 + " --speed " + pixelsPerSecond;
     }
 
+    /**
+     * Matches xscreensaver's shell_quotify(): quote when the value has spaces,
+     * quotes, or other specials. Avoid non-ASCII, which can break ~/.xscreensaver.
+     */
     private static String quoteForXscreensaver(String value) {
-        String escaped = value.replace("\\", "\\\\").replace("\"", "\\\"");
-        return "\"" + escaped + "\"";
+        boolean needQuotes = value.isEmpty();
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == '!' || ch == '"' || ch == '$') {
+                needQuotes = true;
+                out.append('\\').append(ch);
+            } else if (ch <= ' ' || ch >= 127 || ch == '\'' || ch == '#' || ch == '%'
+                    || ch == '&' || ch == '(' || ch == ')' || ch == '*') {
+                needQuotes = true;
+                out.append(ch);
+            } else {
+                out.append(ch);
+            }
+        }
+        return needQuotes ? "\"" + out + "\"" : out.toString();
+    }
+
+    private static String asciiSafe(String value) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            out.append(ch < 127 ? ch : '-');
+        }
+        return out.toString();
+    }
+
+    static java.util.List<String> tokenizeCommandLine(String cmd) {
+        var tokens = new java.util.ArrayList<String>();
+        int i = 0;
+        int n = cmd.length();
+        while (i < n) {
+            while (i < n && Character.isWhitespace(cmd.charAt(i))) {
+                i++;
+            }
+            if (i >= n) {
+                break;
+            }
+            char q = cmd.charAt(i);
+            if (q == '"' || q == '\'' || q == '`') {
+                i++;
+                var token = new StringBuilder();
+                while (i < n && cmd.charAt(i) != q) {
+                    if (cmd.charAt(i) == '\\' && i + 1 < n) {
+                        i++;
+                    }
+                    token.append(cmd.charAt(i));
+                    i++;
+                }
+                if (i < n && cmd.charAt(i) == q) {
+                    i++;
+                }
+                tokens.add(token.toString());
+            } else {
+                int start = i;
+                while (i < n && !Character.isWhitespace(cmd.charAt(i))
+                        && cmd.charAt(i) != '"' && cmd.charAt(i) != '\'' && cmd.charAt(i) != '`') {
+                    i++;
+                }
+                tokens.add(cmd.substring(start, i));
+            }
+        }
+        return tokens;
     }
 
     public ScreensaverConfig copy() {

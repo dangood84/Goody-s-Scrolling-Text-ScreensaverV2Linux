@@ -48,7 +48,7 @@ final class X11WindowEmbed {
     }
 
     private static void showPopup(ScreensaverConfig config, Rectangle bounds, boolean fullscreenPreview) {
-        var frame = new MarqueeFrame(config, () -> System.exit(0), false, fullscreenPreview);
+        var frame = new MarqueeFrame(config, () -> System.exit(0), fullscreenPreview, fullscreenPreview);
         if (!fullscreenPreview) {
             frame.setFocusableWindowState(false);
         }

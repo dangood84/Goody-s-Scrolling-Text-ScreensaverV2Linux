@@ -30,9 +30,10 @@ public final class MarqueeSaver {
             installLookAndFeel();
             ScreensaverConfig config = ScreensaverConfig.load();
             config.applyCommandLine(args);
-            config.syncXscreensaverCommand();
+            config.applyXscreensaverFile();
 
             if (wantConfig || (mode == LaunchMode.CONFIG && windowId == null)) {
+                config.syncXscreensaverCommand();
                 new SettingsDialog(config).setVisible(true);
                 return;
             }
