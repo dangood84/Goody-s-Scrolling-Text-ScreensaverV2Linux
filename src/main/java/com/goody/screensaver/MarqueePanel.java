@@ -29,6 +29,7 @@ public final class MarqueePanel extends JPanel {
     private float stride = 1f;
     private long lastNanos;
     private boolean startedFromRight;
+    private int lastHeight = -1;
 
     public MarqueePanel(ScreensaverConfig config) {
         this.config = config;
@@ -106,6 +107,11 @@ public final class MarqueePanel extends JPanel {
                 return;
             }
 
+            if (getHeight() != lastHeight) {
+                lastHeight = getHeight();
+                startedFromRight = false;
+            }
+
             AttributedString attributed = createAttributedText();
             AttributedCharacterIterator iterator = attributed.getIterator();
             FontRenderContext frc = g2.getFontRenderContext();
@@ -144,7 +150,7 @@ public final class MarqueePanel extends JPanel {
 
         // Use FAMILY/SIZE instead of FONT. If FONT is set, Java ignores WEIGHT and
         // POSTURE, which is why underline (a separate decoration) still worked.
-        Font customFont = new Font(config.getFontFamily(), Font.PLAIN, config.getFontSize());
+        Font customFont = new Font(config.getFontFamily(), Font.PLAIN, drawingFontSize());
         AttributedString attributed = new AttributedString(text);
         attributed.addAttribute(TextAttribute.FAMILY, customFont.getFamily());
         attributed.addAttribute(TextAttribute.SIZE, (float) customFont.getSize());
@@ -160,5 +166,14 @@ public final class MarqueePanel extends JPanel {
             attributed.addAttribute(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
         }
         return attributed;
+    }
+
+    private int drawingFontSize() {
+        int configured = config.getFontSize();
+        int height = getHeight();
+        if (height <= 0) {
+            return configured;
+        }
+        return Math.min(configured, Math.max(10, height - 8));
     }
 }

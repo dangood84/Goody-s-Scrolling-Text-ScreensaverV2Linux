@@ -100,6 +100,68 @@ public final class ScreensaverConfig {
         writeConfigFile();
     }
 
+    /**
+     * XScreensaver Settings reads command-line flags from {@code ~/.xscreensaver},
+     * not our config file. Keep that program line in sync so the panel shows
+     * the same message, font, colors, and speed.
+     */
+    public void syncXscreensaverCommand() {
+        Path rc = Path.of(System.getProperty("user.home"), ".xscreensaver");
+        if (!Files.isRegularFile(rc)) {
+            return;
+        }
+        try {
+            String text = Files.readString(rc);
+            String marker = "goodys-marquee-screensaver";
+            int markerAt = text.indexOf(marker);
+            if (markerAt < 0) {
+                return;
+            }
+            int lineStart = text.lastIndexOf('\n', markerAt - 1) + 1;
+            int lineEnd = text.indexOf('\n', markerAt);
+            if (lineEnd < 0) {
+                lineEnd = text.length();
+            }
+            String line = text.substring(lineStart, lineEnd);
+            int pathStart = markerAt - lineStart;
+            while (pathStart > 0 && !Character.isWhitespace(line.charAt(pathStart - 1))) {
+                pathStart--;
+            }
+            String leading = line.substring(0, pathStart);
+            String binary = line.substring(pathStart, markerAt - lineStart + marker.length());
+            boolean continuation = line.contains("\\n\\");
+            String updated = leading + binary + " " + xscreensaverArgs();
+            if (continuation) {
+                updated += " \\n\\";
+            }
+            if (updated.equals(line)) {
+                return;
+            }
+            String rebuilt = text.substring(0, lineStart) + updated + text.substring(lineEnd);
+            Files.writeString(rc, rebuilt);
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, "Unable to update ~/.xscreensaver", ex);
+        }
+    }
+
+    private String xscreensaverArgs() {
+        return "--fullscreen"
+                + " --message " + quoteForXscreensaver(displayMessage())
+                + " --font-family " + quoteForXscreensaver(fontFamily)
+                + " --font-size " + fontSize
+                + (bold ? " --bold" : " --no-bold")
+                + (italic ? " --italic" : " --no-italic")
+                + (underline ? " --underline" : " --no-underline")
+                + " --text-color " + toHex(textColor)
+                + " --background-color " + toHex(backgroundColor)
+                + " --speed " + pixelsPerSecond;
+    }
+
+    private static String quoteForXscreensaver(String value) {
+        String escaped = value.replace("\\", "\\\\").replace("\"", "\\\"");
+        return "\"" + escaped + "\"";
+    }
+
     public ScreensaverConfig copy() {
         var copy = new ScreensaverConfig();
         copy.message = message;

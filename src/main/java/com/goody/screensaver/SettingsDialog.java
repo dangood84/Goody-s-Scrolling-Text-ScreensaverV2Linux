@@ -68,6 +68,7 @@ public final class SettingsDialog extends JFrame {
             public void windowClosed(WindowEvent event) {
                 if (!launchingScreensaver) {
                     config.save();
+                    config.syncXscreensaverCommand();
                     System.exit(0);
                 }
             }
@@ -185,6 +186,7 @@ public final class SettingsDialog extends JFrame {
                 config.setMessage(config.displayMessage());
             }
             config.save();
+            config.syncXscreensaverCommand();
             saved.setText("Saved");
         });
         start.addActionListener(event -> launchScreensaver());
@@ -196,7 +198,7 @@ public final class SettingsDialog extends JFrame {
         buttons.add(start);
         south.add(buttons, BorderLayout.SOUTH);
 
-        var hint = new JLabel("XScreensaver Settings: click Close to apply. This window: Save.");
+        var hint = new JLabel("Save writes XScreensaver too. Close and reopen that Settings panel to see the values.");
         hint.setForeground(new Color(90, 90, 90));
         south.add(hint, BorderLayout.NORTH);
         return south;
@@ -204,6 +206,7 @@ public final class SettingsDialog extends JFrame {
 
     private void launchScreensaver() {
         config.save();
+        config.syncXscreensaverCommand();
         launchingScreensaver = true;
         setVisible(false);
         dispose();

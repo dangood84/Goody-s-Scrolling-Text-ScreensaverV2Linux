@@ -4,6 +4,7 @@ import java.awt.Cursor;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.IllegalComponentStateException;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -31,18 +32,28 @@ public final class MarqueeFrame extends JFrame {
     private final GraphicsDevice device;
     private final Runnable onExit;
     private final boolean exitOnMouseMove;
+    private final boolean exitOnClick;
     private boolean exited;
     private Point firstMousePoint;
     private long shownAtMillis;
 
     public MarqueeFrame(ScreensaverConfig config, Runnable onExit) {
-        this(config, onExit, true);
+        this(config, onExit, true, true);
     }
 
     public MarqueeFrame(ScreensaverConfig config, Runnable onExit, boolean exitOnMouseMove) {
+        this(config, onExit, exitOnMouseMove, true);
+    }
+
+    public MarqueeFrame(
+            ScreensaverConfig config,
+            Runnable onExit,
+            boolean exitOnMouseMove,
+            boolean exitOnClick) {
         super("Goody's Scrolling Text Screensaver");
         this.onExit = onExit;
         this.exitOnMouseMove = exitOnMouseMove;
+        this.exitOnClick = exitOnClick;
         this.device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
 
         setUndecorated(true);
@@ -55,6 +66,10 @@ public final class MarqueeFrame extends JFrame {
         MarqueePanel panel = new MarqueePanel(config);
         setContentPane(panel);
         bindWakeListeners(panel);
+        if (!exitOnClick) {
+            // Mini xscreensaver preview should not steal keyboard from the settings UI.
+            setFocusable(false);
+        }
     }
 
     public void showFullScreen() {
@@ -77,35 +92,58 @@ public final class MarqueeFrame extends JFrame {
         getContentPane().requestFocusInWindow();
     }
 
+    /**
+     * Override-redirect popup used to sit on top of xscreensaver's black
+     * preview overlay, sized to the target window.
+     */
+    public void showAsPopup(Rectangle bounds) {
+        shownAtMillis = System.currentTimeMillis();
+        try {
+            setType(Type.POPUP);
+        } catch (IllegalComponentStateException ignored) {
+            // Window already realized; always-on-top still helps.
+        }
+        setAlwaysOnTop(true);
+        setBounds(bounds);
+        setVisible(true);
+        toFront();
+        if (exitOnClick) {
+            requestFocus();
+            getContentPane().requestFocusInWindow();
+        }
+    }
+
     private void bindWakeListeners(MarqueePanel panel) {
-        KeyAdapter keys = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent event) {
-                if (!stillInGracePeriod(CLICK_GRACE_MS)) {
-                    exitScreensaver();
+        if (exitOnClick) {
+            KeyAdapter keys = new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent event) {
+                    if (!stillInGracePeriod(CLICK_GRACE_MS)) {
+                        exitScreensaver();
+                    }
                 }
-            }
 
-            @Override
-            public void keyTyped(KeyEvent event) {
-                if (!stillInGracePeriod(CLICK_GRACE_MS)) {
-                    exitScreensaver();
+                @Override
+                public void keyTyped(KeyEvent event) {
+                    if (!stillInGracePeriod(CLICK_GRACE_MS)) {
+                        exitScreensaver();
+                    }
                 }
-            }
-        };
-        addKeyListener(keys);
-        panel.addKeyListener(keys);
+            };
+            addKeyListener(keys);
+            panel.addKeyListener(keys);
 
-        MouseAdapter clicks = new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent event) {
-                if (!stillInGracePeriod(CLICK_GRACE_MS)) {
-                    exitScreensaver();
+            MouseAdapter clicks = new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent event) {
+                    if (!stillInGracePeriod(CLICK_GRACE_MS)) {
+                        exitScreensaver();
+                    }
                 }
-            }
-        };
-        addMouseListener(clicks);
-        panel.addMouseListener(clicks);
+            };
+            addMouseListener(clicks);
+            panel.addMouseListener(clicks);
+        }
 
         if (!exitOnMouseMove) {
             return;
