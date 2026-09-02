@@ -426,10 +426,10 @@ public final class ScreensaverConfig {
                         changed = true;
                     }
                 } else if (key.equalsIgnoreCase("font-size") || key.equalsIgnoreCase("fontSize")) {
-                    setFontSize(Integer.parseInt(value.trim()));
+                    setFontSize(parseCliInt(value));
                     changed = true;
                 } else if (key.equalsIgnoreCase("speed") || key.equalsIgnoreCase("pixels-per-second")) {
-                    setPixelsPerSecond(Integer.parseInt(value.trim()));
+                    setPixelsPerSecond(parseCliInt(value));
                     changed = true;
                 } else if (key.equalsIgnoreCase("text-color") || key.equalsIgnoreCase("textColor")) {
                     if (!isPlaceholder(value)) {
@@ -466,6 +466,11 @@ public final class ScreensaverConfig {
 
     private static boolean isPlaceholder(String value) {
         return value == null || value.isBlank() || value.equals("%");
+    }
+
+    /** XScreensaver sliders often pass {@code 64.000} rather than {@code 64}. */
+    private static int parseCliInt(String value) {
+        return (int) Math.round(Double.parseDouble(value.trim()));
     }
 
     static Path configFile() {

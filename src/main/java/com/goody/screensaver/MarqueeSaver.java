@@ -29,14 +29,19 @@ public final class MarqueeSaver {
         SwingUtilities.invokeLater(() -> {
             installLookAndFeel();
             ScreensaverConfig config = ScreensaverConfig.load();
-            config.applyCommandLine(args);
-            config.applyXscreensaverFile();
 
+            // Java Settings: ~/.xscreensaver is what XScreensaver last wrote on Close.
+            // Preview / blanking: the process argv is what the Settings panel just
+            // set. Re-reading the file here used to throw those changes away,
+            // because XScreensaver often restarts the preview before it has
+            // written ~/.xscreensaver.
             if (wantConfig || (mode == LaunchMode.CONFIG && windowId == null)) {
+                config.applyXscreensaverFile();
                 config.syncXscreensaverCommand();
                 new SettingsDialog(config).setVisible(true);
                 return;
             }
+            config.applyCommandLine(args);
             if (windowId != null) {
                 if (X11WindowEmbed.show(config, windowId)) {
                     return;
