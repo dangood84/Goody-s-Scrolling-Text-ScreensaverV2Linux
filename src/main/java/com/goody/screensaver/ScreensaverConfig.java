@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -149,16 +150,32 @@ public final class ScreensaverConfig {
      * Accessories settings window matches what XScreensaver last wrote.
      */
     public void applyXscreensaverFile() {
+        applyCommandLine(readXscreensaverArgTokens(), true);
+    }
+
+    static boolean commandMatchesXscreensaverFile(String[] args) {
+        String[] fileArgs = readXscreensaverArgTokens();
+        if (fileArgs.length == 0) {
+            return false;
+        }
+        var fromFile = new ScreensaverConfig();
+        var fromArgv = new ScreensaverConfig();
+        fromFile.applyCommandLine(fileArgs, false);
+        fromArgv.applyCommandLine(args, false);
+        return fromFile.sameSettings(fromArgv);
+    }
+
+    private static String[] readXscreensaverArgTokens() {
         Path rc = Path.of(System.getProperty("user.home"), ".xscreensaver");
         if (!Files.isRegularFile(rc)) {
-            return;
+            return new String[0];
         }
         try {
             String text = Files.readString(rc);
             String marker = "goodys-marquee-screensaver";
             int markerAt = text.indexOf(marker);
             if (markerAt < 0) {
-                return;
+                return new String[0];
             }
             int lineStart = text.lastIndexOf('\n', markerAt - 1) + 1;
             int lineEnd = text.indexOf('\n', markerAt);
@@ -169,16 +186,32 @@ public final class ScreensaverConfig {
             int localMarker = markerAt - lineStart;
             int argsStart = localMarker + marker.length();
             if (argsStart > line.length()) {
-                return;
+                return new String[0];
             }
             String args = line.substring(argsStart).trim();
             if (args.endsWith("\\n\\")) {
                 args = args.substring(0, args.length() - 3).trim();
             }
-            applyCommandLine(tokenizeCommandLine(args).toArray(String[]::new));
+            return tokenizeCommandLine(args).toArray(String[]::new);
         } catch (IOException ex) {
             LOG.log(Level.WARNING, "Unable to read ~/.xscreensaver", ex);
+            return new String[0];
         }
+    }
+
+    boolean sameSettings(ScreensaverConfig other) {
+        if (other == null) {
+            return false;
+        }
+        return Objects.equals(displayMessage(), other.displayMessage())
+                && Objects.equals(fontFamily, other.fontFamily)
+                && fontSize == other.fontSize
+                && bold == other.bold
+                && italic == other.italic
+                && underline == other.underline
+                && textColor.getRGB() == other.textColor.getRGB()
+                && backgroundColor.getRGB() == other.backgroundColor.getRGB()
+                && pixelsPerSecond == other.pixelsPerSecond;
     }
 
     private String xscreensaverArgs() {
@@ -378,6 +411,10 @@ public final class ScreensaverConfig {
      * changed. Unknown flags (including {@code -window-id}) are ignored.
      */
     public void applyCommandLine(String[] args) {
+        applyCommandLine(args, true);
+    }
+
+    public void applyCommandLine(String[] args, boolean persist) {
         if (args == null || args.length == 0) {
             return;
         }
@@ -475,7 +512,7 @@ public final class ScreensaverConfig {
                 LOG.log(Level.WARNING, "Ignoring screensaver option --" + key + " " + value, ex);
             }
         }
-        if (changed) {
+        if (changed && persist) {
             save();
         }
     }

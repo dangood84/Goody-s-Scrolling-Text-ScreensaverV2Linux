@@ -28,20 +28,12 @@ public final class MarqueeSaver {
 
         SwingUtilities.invokeLater(() -> {
             installLookAndFeel();
-            ScreensaverConfig config = ScreensaverConfig.load();
-
-            // Java Settings: ~/.xscreensaver is what XScreensaver last wrote on Close.
-            // Preview / blanking: the process argv is what the Settings panel just
-            // set. Re-reading the file here used to throw those changes away,
-            // because XScreensaver often restarts the preview before it has
-            // written ~/.xscreensaver.
+            ScreensaverConfig config = resolveConfig(args, wantConfig
+                    || (mode == LaunchMode.CONFIG && windowId == null));
             if (wantConfig || (mode == LaunchMode.CONFIG && windowId == null)) {
-                config.applyXscreensaverFile();
-                config.syncXscreensaverCommand();
                 new SettingsDialog(config).setVisible(true);
                 return;
             }
-            config.applyCommandLine(args);
             if (windowId != null) {
                 if (X11WindowEmbed.show(config, windowId)) {
                     return;
@@ -54,6 +46,30 @@ public final class MarqueeSaver {
             }
             new SettingsDialog(config).setVisible(true);
         });
+    }
+
+    /**
+     * Live XScreensaver Settings pass the new flags on argv but often never
+     * write them: closing that dialog restores the Accessories command line.
+     * Keep the last live preview in {@code config.properties}, and put those
+     * values back into {@code ~/.xscreensaver} when the file snaps back.
+     */
+    static ScreensaverConfig resolveConfig(String[] args, boolean configMode) {
+        ScreensaverConfig stored = ScreensaverConfig.load();
+        if (configMode) {
+            stored.syncXscreensaverCommand();
+            return stored;
+        }
+        ScreensaverConfig fromArgv = stored.copy();
+        fromArgv.applyCommandLine(args, false);
+        boolean argvMatchesFile = ScreensaverConfig.commandMatchesXscreensaverFile(args);
+        if (argvMatchesFile && !fromArgv.sameSettings(stored)) {
+            stored.syncXscreensaverCommand();
+            return stored;
+        }
+        fromArgv.save();
+        fromArgv.syncXscreensaverCommand();
+        return fromArgv;
     }
 
     private static void installLookAndFeel() {
