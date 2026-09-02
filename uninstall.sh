@@ -12,4 +12,7 @@ if [ -f "$HOME/.xscreensaver" ]; then
         mv "$tmp" "$HOME/.xscreensaver"
     fi
 fi
+if [ -f /usr/share/xscreensaver/config/goodys-marquee-screensaver.xml ]; then
+    sudo rm -f /usr/share/xscreensaver/config/goodys-marquee-screensaver.xml || true
+fi
 echo "Removed Goody's Marquee from $PREFIX"

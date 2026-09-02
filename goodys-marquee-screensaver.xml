@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<screensaver name="goodys-marquee-screensaver" _label="Goody's Marquee">
+
+  <command arg="--fullscreen"/>
+
+  <string id="message" _label="Message" arg="--message %"/>
+
+  <string id="fontFamily" _label="Font family" arg="--font-family %"/>
+
+  <number id="fontSize" type="slider" arg="--font-size %"
+          _label="Font size" _low-label="Small" _high-label="Large"
+          low="8" high="200" default="64"/>
+
+  <boolean id="bold" _label="Bold" arg-set="--bold" arg-unset="--no-bold"/>
+  <boolean id="italic" _label="Italic" arg-set="--italic" arg-unset="--no-italic"/>
+  <boolean id="underline" _label="Underline" arg-set="--underline" arg-unset="--no-underline"/>
+
+  <string id="textColor" _label="Text color (#RRGGBB)" arg="--text-color %"/>
+  <string id="backgroundColor" _label="Background (#RRGGBB)" arg="--background-color %"/>
+
+  <number id="speed" type="slider" arg="--speed %"
+          _label="Speed" _low-label="Slow" _high-label="Fast"
+          low="10" high="400" default="140"/>
+
+  <_description>
+    Scrolling text marquee. Colors are hex such as #FFD666.
+    The application menu item Goody's Marquee Settings has color pickers.
+  </_description>
+</screensaver>

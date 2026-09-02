@@ -172,6 +172,122 @@ public final class ScreensaverConfig {
         return families;
     }
 
+    /**
+     * Applies xscreensaver XML / command-line overrides and saves if anything
+     * changed. Unknown flags (including {@code -window-id}) are ignored.
+     */
+    public void applyCommandLine(String[] args) {
+        if (args == null || args.length == 0) {
+            return;
+        }
+        boolean changed = false;
+        for (int i = 0; i < args.length; i++) {
+            String raw = args[i];
+            String key = MarqueeSaver.optionKey(raw);
+            if (key.isEmpty()) {
+                continue;
+            }
+            if (key.equalsIgnoreCase("window-id") || key.equalsIgnoreCase("window_id")) {
+                if (!raw.contains("=") && i + 1 < args.length) {
+                    i++;
+                }
+                continue;
+            }
+            if (key.equalsIgnoreCase("bold")) {
+                setBold(true);
+                changed = true;
+                continue;
+            }
+            if (key.equalsIgnoreCase("no-bold")) {
+                setBold(false);
+                changed = true;
+                continue;
+            }
+            if (key.equalsIgnoreCase("italic")) {
+                setItalic(true);
+                changed = true;
+                continue;
+            }
+            if (key.equalsIgnoreCase("no-italic")) {
+                setItalic(false);
+                changed = true;
+                continue;
+            }
+            if (key.equalsIgnoreCase("underline")) {
+                setUnderline(true);
+                changed = true;
+                continue;
+            }
+            if (key.equalsIgnoreCase("no-underline")) {
+                setUnderline(false);
+                changed = true;
+                continue;
+            }
+            String value = flagValue(raw, args, i);
+            if (value == null) {
+                continue;
+            }
+            if (!raw.contains("=") && i + 1 < args.length && args[i + 1].equals(value)) {
+                i++;
+            }
+            try {
+                if (key.equalsIgnoreCase("message")) {
+                    setMessage(value);
+                    changed = true;
+                } else if (key.equalsIgnoreCase("font-family") || key.equalsIgnoreCase("fontFamily")) {
+                    setFontFamily(value);
+                    changed = true;
+                } else if (key.equalsIgnoreCase("font-size") || key.equalsIgnoreCase("fontSize")) {
+                    setFontSize(Integer.parseInt(value.trim()));
+                    changed = true;
+                } else if (key.equalsIgnoreCase("speed") || key.equalsIgnoreCase("pixels-per-second")) {
+                    setPixelsPerSecond(Integer.parseInt(value.trim()));
+                    changed = true;
+                } else if (key.equalsIgnoreCase("text-color") || key.equalsIgnoreCase("textColor")) {
+                    setTextColor(parseColor(value));
+                    changed = true;
+                } else if (key.equalsIgnoreCase("background-color")
+                        || key.equalsIgnoreCase("backgroundColor")
+                        || key.equalsIgnoreCase("bg-color")) {
+                    setBackgroundColor(parseColor(value));
+                    changed = true;
+                }
+            } catch (RuntimeException ex) {
+                LOG.log(Level.WARNING, "Ignoring screensaver option --" + key + " " + value, ex);
+            }
+        }
+        if (changed) {
+            save();
+        }
+    }
+
+    private static String flagValue(String raw, String[] args, int index) {
+        int equals = raw.indexOf('=');
+        if (equals > 0) {
+            return raw.substring(equals + 1);
+        }
+        if (index + 1 < args.length && !args[index + 1].startsWith("-")) {
+            return args[index + 1];
+        }
+        return null;
+    }
+
+    private static Color parseColor(String raw) {
+        String hex = raw.trim();
+        if (hex.startsWith("#")) {
+            hex = hex.substring(1);
+        } else if (hex.startsWith("0x") || hex.startsWith("0X")) {
+            hex = hex.substring(2);
+        }
+        if (hex.length() == 6) {
+            return new Color(Integer.parseInt(hex, 16));
+        }
+        if (hex.length() == 8) {
+            return new Color((int) Long.parseLong(hex, 16), true);
+        }
+        throw new IllegalArgumentException("Not a hex color: " + raw);
+    }
+
     private static String pickDefaultFontFamily() {
         List<String> available = Arrays.stream(availableFontFamilies())
                 .map(family -> family.toLowerCase(Locale.ROOT))

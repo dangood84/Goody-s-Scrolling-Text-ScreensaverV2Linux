@@ -61,6 +61,7 @@ public final class SettingsDialog extends JFrame {
         pack();
         fitToScreen();
         setLocationRelativeTo(null);
+        setAlwaysOnTop(true);
 
         addWindowListener(new WindowAdapter() {
             @Override

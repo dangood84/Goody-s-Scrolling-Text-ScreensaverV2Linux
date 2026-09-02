@@ -1,9 +1,17 @@
 #!/bin/sh
 # Runs the marquee. Screensaver desktops should pass --fullscreen.
+# xscreensaver adds -window-id so preview can draw in its overlay.
 ROOT="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 if ! command -v java >/dev/null 2>&1; then
     echo "Java 21 or later is required (java not found on PATH)." >&2
     exit 1
 fi
 # OpenGL Java2D on Raspberry Pi often produces a black window.
-exec java -Dsun.java2d.opengl=false -jar "$ROOT/GoodysMarquee.jar" "$@"
+# sun.awt.X11.XEmbeddedFrame is required to draw in xscreensaver's preview.
+exec java \
+    -Dsun.java2d.opengl=false \
+    --add-exports java.desktop/sun.awt=ALL-UNNAMED \
+    --add-exports java.desktop/sun.awt.X11=ALL-UNNAMED \
+    --add-opens java.desktop/sun.awt=ALL-UNNAMED \
+    --add-opens java.desktop/sun.awt.X11=ALL-UNNAMED \
+    -jar "$ROOT/GoodysMarquee.jar" "$@"

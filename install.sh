@@ -19,6 +19,7 @@ SAVERDIR="$APPDIR/screensavers"
 mkdir -p "$PREFIX" "$SAVERDIR" "$APPDIR"
 cp "$ROOT/GoodysMarquee.jar" "$PREFIX/GoodysMarquee.jar"
 cp "$ROOT/goodys-marquee-screensaver" "$PREFIX/goodys-marquee-screensaver"
+cp "$ROOT/goodys-marquee-screensaver.xml" "$PREFIX/goodys-marquee-screensaver.xml"
 chmod +x "$PREFIX/goodys-marquee-screensaver"
 
 cat > "$SAVERDIR/goodys-marquee.desktop" << EOF
@@ -40,7 +41,8 @@ Name=Goody's Marquee Settings
 Comment=Configure Goody's scrolling text screensaver
 Exec=$PREFIX/goodys-marquee-screensaver --config
 TryExec=java
-Categories=Settings;DesktopSettings;
+Categories=Settings;DesktopSettings;Utility;
+Icon=preferences-desktop-screensaver
 StartupNotify=false
 Terminal=false
 EOF
@@ -82,7 +84,20 @@ fi
 
 echo "Installed to $PREFIX"
 echo "Screensaver desktop file: $SAVERDIR/goodys-marquee.desktop"
-echo "Settings: application menu → Goody's Marquee Settings"
+echo "Settings: application menu → Goody's Marquee Settings, or XScreensaver's Settings button after the XML is installed."
+echo
+
+XSCREENSAVER_XML_DIR="/usr/share/xscreensaver/config"
+if [ -d "$XSCREENSAVER_XML_DIR" ]; then
+    echo "Installing XScreensaver Settings panel (may ask for your sudo password)..."
+    if sudo cp "$PREFIX/goodys-marquee-screensaver.xml" "$XSCREENSAVER_XML_DIR/goodys-marquee-screensaver.xml"; then
+        echo "XScreensaver Settings should now show message, font, colors, and speed."
+        echo "Close and reopen XScreensaver settings if it was already open."
+    else
+        echo "To enable the Settings button, run:"
+        echo "  sudo cp $PREFIX/goodys-marquee-screensaver.xml $XSCREENSAVER_XML_DIR/"
+    fi
+fi
 echo
 echo "MATE / Cinnamon / XFCE: open Screensaver settings and pick Goody's Marquee."
 echo "Raspberry Pi OS (Wayland): install xscreensaver, or switch to X11 in raspi-config for classic saver support:"

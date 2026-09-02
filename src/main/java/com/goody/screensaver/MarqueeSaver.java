@@ -10,6 +10,8 @@ import javax.swing.UIManager;
  * <p>{@code /s} or {@code --fullscreen} starts the saver immediately.
  * {@code /c} or {@code --config} opens the preferences dialog.
  * With no arguments, the settings dialog is shown.
+ * xscreensaver passes {@code -window-id}; that must be drawn into, not
+ * replaced with a second full-screen window.
  */
 public final class MarqueeSaver {
 
@@ -21,16 +23,29 @@ public final class MarqueeSaver {
         System.setProperty("sun.java2d.opengl", "false");
 
         LaunchMode mode = LaunchMode.fromArgs(args);
-        boolean xscreensaver = launchedByXscreensaver(args);
+        Long windowId = findWindowId(args);
+        boolean wantConfig = hasExplicitConfigFlag(args);
 
         SwingUtilities.invokeLater(() -> {
             installLookAndFeel();
             ScreensaverConfig config = ScreensaverConfig.load();
-            if (mode == LaunchMode.CONFIG) {
+            config.applyCommandLine(args);
+
+            if (wantConfig || (mode == LaunchMode.CONFIG && windowId == null)) {
                 new SettingsDialog(config).setVisible(true);
-            } else {
-                new MarqueeFrame(config, () -> System.exit(0), !xscreensaver).showFullScreen();
+                return;
             }
+            if (windowId != null) {
+                if (X11WindowEmbed.show(config, windowId)) {
+                    return;
+                }
+                System.err.println("Goody's Marquee: xscreensaver embed failed; falling back to a window.");
+            }
+            if (mode == LaunchMode.FULLSCREEN || mode == LaunchMode.PREVIEW || windowId != null) {
+                new MarqueeFrame(config, () -> System.exit(0), true).showFullScreen();
+                return;
+            }
+            new SettingsDialog(config).setVisible(true);
         });
     }
 
@@ -52,19 +67,60 @@ public final class MarqueeSaver {
         }
     }
 
-    static boolean launchedByXscreensaver(String[] args) {
-        if (System.getenv("XSCREENSAVER_WINDOW") != null) {
-            return true;
-        }
+    static boolean hasExplicitConfigFlag(String[] args) {
         for (String raw : args) {
             String key = optionKey(raw);
-            if (key.equalsIgnoreCase("window-id")
-                    || key.equalsIgnoreCase("window_id")
-                    || key.equalsIgnoreCase("root")) {
+            if (key.equalsIgnoreCase("c")
+                    || key.equalsIgnoreCase("config")
+                    || key.equalsIgnoreCase("prefs")
+                    || key.toLowerCase(Locale.ROOT).startsWith("c:")) {
                 return true;
             }
         }
         return false;
+    }
+
+    static Long findWindowId(String[] args) {
+        Long fromEnv = parseWindowId(System.getenv("XSCREENSAVER_WINDOW"));
+        if (fromEnv != null) {
+            return fromEnv;
+        }
+        for (int i = 0; i < args.length; i++) {
+            String raw = args[i];
+            String key = optionKey(raw);
+            if (!key.equalsIgnoreCase("window-id") && !key.equalsIgnoreCase("window_id")) {
+                continue;
+            }
+            String value;
+            int equals = raw.indexOf('=');
+            if (equals > 0) {
+                value = raw.substring(equals + 1);
+            } else if (i + 1 < args.length) {
+                value = args[i + 1];
+            } else {
+                continue;
+            }
+            Long parsed = parseWindowId(value);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+        return null;
+    }
+
+    static Long parseWindowId(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.trim();
+        try {
+            if (value.startsWith("0x") || value.startsWith("0X")) {
+                return Long.parseUnsignedLong(value.substring(2), 16);
+            }
+            return Long.parseUnsignedLong(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     static String optionKey(String raw) {
