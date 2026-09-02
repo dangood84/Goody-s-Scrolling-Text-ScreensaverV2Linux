@@ -28,10 +28,9 @@ public final class MarqueeSaver {
 
         SwingUtilities.invokeLater(() -> {
             installLookAndFeel();
-            ScreensaverConfig config = resolveConfig(args, wantConfig
-                    || (mode == LaunchMode.CONFIG && windowId == null));
+            ScreensaverConfig config = ScreensaverConfig.load();
             if (wantConfig || (mode == LaunchMode.CONFIG && windowId == null)) {
-                new SettingsDialog(config).setVisible(true);
+                new SettingsDialog(config, true).setVisible(true);
                 return;
             }
             if (windowId != null) {
@@ -44,32 +43,8 @@ public final class MarqueeSaver {
                 new MarqueeFrame(config, () -> System.exit(0), true).showFullScreen();
                 return;
             }
-            new SettingsDialog(config).setVisible(true);
+            new SettingsDialog(config, true).setVisible(true);
         });
-    }
-
-    /**
-     * Live XScreensaver Settings pass the new flags on argv but often never
-     * write them: closing that dialog restores the Accessories command line.
-     * Keep the last live preview in {@code config.properties}, and put those
-     * values back into {@code ~/.xscreensaver} when the file snaps back.
-     */
-    static ScreensaverConfig resolveConfig(String[] args, boolean configMode) {
-        ScreensaverConfig stored = ScreensaverConfig.load();
-        if (configMode) {
-            stored.syncXscreensaverCommand();
-            return stored;
-        }
-        ScreensaverConfig fromArgv = stored.copy();
-        fromArgv.applyCommandLine(args, false);
-        boolean argvMatchesFile = ScreensaverConfig.commandMatchesXscreensaverFile(args);
-        if (argvMatchesFile && !fromArgv.sameSettings(stored)) {
-            stored.syncXscreensaverCommand();
-            return stored;
-        }
-        fromArgv.save();
-        fromArgv.syncXscreensaverCommand();
-        return fromArgv;
     }
 
     private static void installLookAndFeel() {

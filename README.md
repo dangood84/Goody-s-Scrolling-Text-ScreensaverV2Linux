@@ -19,7 +19,7 @@ chmod +x build-jar.sh install.sh uninstall.sh goodys-marquee-screensaver
 ./install.sh
 ```
 
-Then pick **Goody's Marquee** in XScreensaver. Clicking the name should preview *in the preview pane*, not steal the whole desktop. **Settings** in that window needs the XML file `install.sh` copies into `/usr/share/xscreensaver/config/` (it will ask for sudo). You can also open **Goody's Marquee Settings** from the application menu for color pickers.
+Then pick **Goody's Marquee** in XScreensaver. Clicking the name should preview *in the preview pane*, not steal the whole desktop. A **Goody's Marquee Settings** window with a **Save** button opens with that preview (the same app as Accessories). XScreensaver's own Settings button cannot host a Save control; it only shows a short note.
 
 ## Raspberry Pi OS
 
@@ -28,9 +28,9 @@ Bookworm and later default to Wayland (labwc), where XScreensaver settings often
 1. `sudo apt install xscreensaver default-jre`
 2. **raspi-config → Advanced Options → Wayland → X11**, then reboot
 3. Open **XScreensaver settings** once (this creates `~/.xscreensaver`)
-4. Run `./install.sh` again (accept sudo so the Settings panel can be installed)
+4. Run `./install.sh` again (accept sudo so the short XScreensaver note can be installed)
 5. Close and reopen XScreensaver settings, then pick **Goody's Marquee**
-6. Use **Goody's Marquee Settings** in the application menu and click **Save**. That also updates `~/.xscreensaver` so XScreensaver's Settings panel can show the same values after you close and reopen it.
+6. Use the **Goody's Marquee Settings** window that appears (or Accessories) and click **Save**
 7. Options are stored in `~/.config/goodys-marquee/config.properties`
 
 If you already opened XScreensaver settings before re-running the installer, that last `./install.sh` is the step that makes it appear in the list.

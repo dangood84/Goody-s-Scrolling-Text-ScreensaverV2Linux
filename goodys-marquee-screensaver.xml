@@ -4,32 +4,8 @@
 
   <command arg="--fullscreen"/>
 
-  <string id="message" _label="Message" arg="--message %"/>
-
-  <string id="fontFamily" _label="Font family" arg="--font-family %"/>
-
-  <number id="fontSize" type="slider" arg="--font-size %"
-          _label="Font size" _low-label="Small" _high-label="Large"
-          low="8" high="200" default="64"/>
-
-  <!-- XScreensaver only records the non-default side of a checkbox.
-       Bold and underline are on by default; italic is off. Specifying
-       both arg-set and arg-unset makes Close ignore the unset flags. -->
-  <boolean id="bold" _label="Bold" arg-unset="--no-bold"/>
-  <boolean id="italic" _label="Italic" arg-set="--italic"/>
-  <boolean id="underline" _label="Underline" arg-unset="--no-underline"/>
-
-  <string id="textColor" _label="Text color (#RRGGBB)" arg="--text-color %"/>
-  <string id="backgroundColor" _label="Background (#RRGGBB)" arg="--background-color %"/>
-
-  <number id="speed" type="slider" arg="--speed %"
-          _label="Speed" _low-label="Slow" _high-label="Fast"
-          low="10" high="400" default="140"/>
-
   <_description>
-    Changes apply to the preview immediately. Close stores them (there is
-    no separate Save button here). Leave a checkbox at its default to omit
-    that flag. Color pickers are also in the application menu under
-    Goody's Marquee Settings.
+    Options are in the Goody's Marquee Settings window (Save button).
+    That window also opens from Accessories.
   </_description>
 </screensaver>

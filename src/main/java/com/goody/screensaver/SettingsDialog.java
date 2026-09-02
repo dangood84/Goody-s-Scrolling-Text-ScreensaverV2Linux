@@ -37,11 +37,17 @@ import javax.swing.event.DocumentListener;
 public final class SettingsDialog extends JFrame {
 
     private final ScreensaverConfig config;
+    private final boolean exitProcessOnClose;
     private boolean launchingScreensaver;
 
     public SettingsDialog(ScreensaverConfig config) {
-        super("Goody's Scrolling Text Screensaver");
+        this(config, true);
+    }
+
+    public SettingsDialog(ScreensaverConfig config, boolean exitProcessOnClose) {
+        super("Goody's Marquee Settings");
         this.config = config;
+        this.exitProcessOnClose = exitProcessOnClose;
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setMinimumSize(new Dimension(520, 420));
@@ -69,7 +75,9 @@ public final class SettingsDialog extends JFrame {
                 if (!launchingScreensaver) {
                     config.save();
                     config.syncXscreensaverCommand();
-                    System.exit(0);
+                    if (exitProcessOnClose) {
+                        System.exit(0);
+                    }
                 }
             }
         });
@@ -89,7 +97,7 @@ public final class SettingsDialog extends JFrame {
         var header = new JPanel(new BorderLayout());
         var title = new JLabel("Preferences & Settings");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
-        var subtitle = new JLabel("Save stores options in ~/.config/goodys-marquee/config.properties");
+        var subtitle = new JLabel("Click Save to keep message, colours, font, and speed");
         subtitle.setForeground(new Color(90, 90, 90));
         header.add(title, BorderLayout.NORTH);
         header.add(subtitle, BorderLayout.SOUTH);
@@ -195,10 +203,12 @@ public final class SettingsDialog extends JFrame {
         buttons.add(saved);
         buttons.add(close);
         buttons.add(save);
-        buttons.add(start);
+        if (exitProcessOnClose) {
+            buttons.add(start);
+        }
         south.add(buttons, BorderLayout.SOUTH);
 
-        var hint = new JLabel("Save writes XScreensaver too. Close and reopen that Settings panel to see the values.");
+        var hint = new JLabel("Save keeps these options for the screensaver preview and for idle blanking.");
         hint.setForeground(new Color(90, 90, 90));
         south.add(hint, BorderLayout.NORTH);
         return south;

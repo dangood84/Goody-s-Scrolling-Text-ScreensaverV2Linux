@@ -51,6 +51,8 @@ final class X11WindowEmbed {
         var frame = new MarqueeFrame(config, () -> System.exit(0), fullscreenPreview, fullscreenPreview);
         if (!fullscreenPreview) {
             frame.setFocusableWindowState(false);
+            // XScreensaver cannot host a real Save button. Open ours instead.
+            new SettingsDialog(config, false).setVisible(true);
         }
         frame.showAsPopup(bounds);
     }

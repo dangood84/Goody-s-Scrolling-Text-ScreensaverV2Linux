@@ -89,17 +89,18 @@ fi
 
 echo "Installed to $PREFIX"
 echo "Screensaver desktop file: $SAVERDIR/goodys-marquee.desktop"
-echo "Settings: application menu → Goody's Marquee Settings, or XScreensaver's Settings button after the XML is installed."
+echo "Settings: application menu → Goody's Marquee Settings, or the Save window that opens with the XScreensaver preview."
 echo
 
 XSCREENSAVER_XML_DIR="/usr/share/xscreensaver/config"
 if [ -d "$XSCREENSAVER_XML_DIR" ]; then
-    echo "Installing XScreensaver Settings panel (may ask for your sudo password)..."
+    echo "Installing XScreensaver description (may ask for your sudo password)..."
     if sudo cp "$PREFIX/goodys-marquee-screensaver.xml" "$XSCREENSAVER_XML_DIR/goodys-marquee-screensaver.xml"; then
-        echo "XScreensaver Settings should now show message, font, colors, and speed."
+        echo "XScreensaver's own Settings pane is a short note only."
+        echo "Use Goody's Marquee Settings and click Save."
         echo "Close and reopen XScreensaver settings if it was already open."
     else
-        echo "To enable the Settings button, run:"
+        echo "To install the description file, run:"
         echo "  sudo cp $PREFIX/goodys-marquee-screensaver.xml $XSCREENSAVER_XML_DIR/"
     fi
 fi
