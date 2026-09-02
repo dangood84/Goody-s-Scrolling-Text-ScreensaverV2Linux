@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs the marquee. Screensaver desktops should pass --fullscreen.
+ROOT="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+if ! command -v java >/dev/null 2>&1; then
+    echo "Java 21 or later is required (java not found on PATH)." >&2
+    exit 1
+fi
+exec java -jar "$ROOT/GoodysMarquee.jar" "$@"

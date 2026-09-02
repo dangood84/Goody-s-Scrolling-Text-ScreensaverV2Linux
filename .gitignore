@@ -1,0 +1,13 @@
+# Build output
+out/
+*.class
+*.jar
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+
+# JVM crash dumps
+hs_err_pid*
+replay_pid*
