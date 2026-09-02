@@ -182,16 +182,30 @@ public final class ScreensaverConfig {
     }
 
     private String xscreensaverArgs() {
-        return "--fullscreen"
-                + " --message " + quoteForXscreensaver(asciiSafe(displayMessage()))
-                + " --font-family " + quoteForXscreensaver(asciiSafe(fontFamily))
-                + " --font-size " + fontSize
-                + (bold ? " --bold" : " --no-bold")
-                + (italic ? " --italic" : " --no-italic")
-                + (underline ? " --underline" : " --no-underline")
-                + " --text-color " + toHex(textColor)
-                + " --background-color " + toHex(backgroundColor)
-                + " --speed " + pixelsPerSecond;
+        // XScreensaver omits flags that match XML defaults, and only honors
+        // one of arg-set / arg-unset per checkbox. Match that so Close can
+        // round-trip Bold/Italic/Underline, size, and the message.
+        StringBuilder out = new StringBuilder("--fullscreen");
+        out.append(" --message ").append(quoteForXscreensaver(asciiSafe(displayMessage())));
+        out.append(" --font-family ").append(quoteForXscreensaver(asciiSafe(fontFamily)));
+        if (fontSize != DEFAULT_FONT_SIZE) {
+            out.append(" --font-size ").append(fontSize);
+        }
+        if (!bold) {
+            out.append(" --no-bold");
+        }
+        if (italic) {
+            out.append(" --italic");
+        }
+        if (!underline) {
+            out.append(" --no-underline");
+        }
+        out.append(" --text-color ").append(toHex(textColor));
+        out.append(" --background-color ").append(toHex(backgroundColor));
+        if (pixelsPerSecond != DEFAULT_PIXELS_PER_SECOND) {
+            out.append(" --speed ").append(pixelsPerSecond);
+        }
+        return out.toString();
     }
 
     /**
@@ -221,6 +235,9 @@ public final class ScreensaverConfig {
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < value.length(); i++) {
             char ch = value.charAt(i);
+            if (ch == '\'') {
+                continue;
+            }
             out.append(ch < 127 ? ch : '-');
         }
         return out.toString();
@@ -365,6 +382,16 @@ public final class ScreensaverConfig {
             return;
         }
         boolean changed = false;
+        if (looksLikeXscreensaverSettings(args)) {
+            // Omitted flags mean XML defaults, not "keep the last Java Save".
+            setMessage(DEFAULT_MESSAGE);
+            setFontSize(DEFAULT_FONT_SIZE);
+            setBold(DEFAULT_BOLD);
+            setItalic(DEFAULT_ITALIC);
+            setUnderline(DEFAULT_UNDERLINE);
+            setPixelsPerSecond(DEFAULT_PIXELS_PER_SECOND);
+            changed = true;
+        }
         for (int i = 0; i < args.length; i++) {
             String raw = args[i];
             String key = MarqueeSaver.optionKey(raw);
@@ -462,6 +489,31 @@ public final class ScreensaverConfig {
             return args[index + 1];
         }
         return null;
+    }
+
+    private static boolean looksLikeXscreensaverSettings(String[] args) {
+        for (String raw : args) {
+            String key = MarqueeSaver.optionKey(raw);
+            if (key.equalsIgnoreCase("message")
+                    || key.equalsIgnoreCase("font-family")
+                    || key.equalsIgnoreCase("fontFamily")
+                    || key.equalsIgnoreCase("font-size")
+                    || key.equalsIgnoreCase("fontSize")
+                    || key.equalsIgnoreCase("bold")
+                    || key.equalsIgnoreCase("no-bold")
+                    || key.equalsIgnoreCase("italic")
+                    || key.equalsIgnoreCase("no-italic")
+                    || key.equalsIgnoreCase("underline")
+                    || key.equalsIgnoreCase("no-underline")
+                    || key.equalsIgnoreCase("text-color")
+                    || key.equalsIgnoreCase("textColor")
+                    || key.equalsIgnoreCase("background-color")
+                    || key.equalsIgnoreCase("backgroundColor")
+                    || key.equalsIgnoreCase("speed")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isPlaceholder(String value) {
