@@ -24,7 +24,9 @@
           low="10" high="400" default="140"/>
 
   <_description>
-    Scrolling text marquee. Colors are hex such as #FFD666.
-    The application menu item Goody's Marquee Settings has color pickers.
+    Type a message, then click Close to apply (there is no separate Save
+    button in this XScreensaver panel). Leave the message blank to keep
+    the default scrolling text. Color pickers are in the application menu
+    under Goody's Marquee Settings, which also has a Save button.
   </_description>
 </screensaver>

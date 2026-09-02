@@ -88,7 +88,7 @@ public final class SettingsDialog extends JFrame {
         var header = new JPanel(new BorderLayout());
         var title = new JLabel("Preferences & Settings");
         title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
-        var subtitle = new JLabel("Saved automatically  •  message, font, colors, speed");
+        var subtitle = new JLabel("Save stores options in ~/.config/goodys-marquee/config.properties");
         subtitle.setForeground(new Color(90, 90, 90));
         header.add(title, BorderLayout.NORTH);
         header.add(subtitle, BorderLayout.SOUTH);
@@ -103,7 +103,7 @@ public final class SettingsDialog extends JFrame {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.weightx = 1;
 
-        var messageField = new JTextField(config.getMessage(), 32);
+        var messageField = new JTextField(config.displayMessage(), 32);
         messageField.getDocument().addDocumentListener(onTextChange(() -> persist(() -> config.setMessage(messageField.getText()))));
         addRow(form, constraints, 0, "Message", messageField);
 
@@ -175,16 +175,28 @@ public final class SettingsDialog extends JFrame {
         south.add(preview, BorderLayout.CENTER);
 
         var buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        var saved = new JLabel(" ");
+        saved.setForeground(new Color(40, 110, 60));
         var close = new JButton("Close");
+        var save = new JButton("Save");
         var start = new JButton("Start screensaver");
+        save.addActionListener(event -> {
+            if (config.getMessage() == null || config.getMessage().isBlank()) {
+                config.setMessage(config.displayMessage());
+            }
+            config.save();
+            saved.setText("Saved");
+        });
         start.addActionListener(event -> launchScreensaver());
         close.addActionListener(event -> dispose());
-        getRootPane().setDefaultButton(start);
+        getRootPane().setDefaultButton(save);
+        buttons.add(saved);
         buttons.add(close);
+        buttons.add(save);
         buttons.add(start);
         south.add(buttons, BorderLayout.SOUTH);
 
-        var hint = new JLabel("Use this window for options. XScreensaver's Settings button does not open it.");
+        var hint = new JLabel("XScreensaver Settings: click Close to apply. This window: Save.");
         hint.setForeground(new Color(90, 90, 90));
         south.add(hint, BorderLayout.NORTH);
         return south;

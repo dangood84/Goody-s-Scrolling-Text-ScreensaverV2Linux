@@ -2,9 +2,15 @@ package com.goody.screensaver;
 
 import java.awt.Color;
 import java.awt.GraphicsEnvironment;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -12,8 +18,8 @@ import java.util.prefs.Preferences;
 import java.util.stream.Stream;
 
 /**
- * Mutable settings for the scrolling marquee. Values are persisted with
- * {@link Preferences} so they reload automatically on the next launch.
+ * Mutable settings for the scrolling marquee. Values are persisted to
+ * {@code ~/.config/goodys-marquee/config.properties} and Java Preferences.
  */
 public final class ScreensaverConfig {
 
@@ -60,7 +66,20 @@ public final class ScreensaverConfig {
         config.textColor = new Color(PREFS.getInt(KEY_TEXT_COLOR, config.textColor.getRGB()), true);
         config.backgroundColor = new Color(PREFS.getInt(KEY_BACKGROUND_COLOR, config.backgroundColor.getRGB()), true);
         config.pixelsPerSecond = PREFS.getInt(KEY_PIXELS_PER_SECOND, config.pixelsPerSecond);
+        config.readConfigFile();
+        if (config.message == null || config.message.isBlank()) {
+            config.message = DEFAULT_MESSAGE;
+            config.save();
+        }
         return config;
+    }
+
+    /**
+     * Text actually drawn on the marquee. Blank saved values fall back to the
+     * default so xscreensaver's empty {@code --message} does not hide the preview.
+     */
+    public String displayMessage() {
+        return message == null || message.isBlank() ? DEFAULT_MESSAGE : message;
     }
 
     public void save() {
@@ -78,6 +97,7 @@ public final class ScreensaverConfig {
         } catch (BackingStoreException ex) {
             LOG.log(Level.WARNING, "Unable to persist screensaver preferences", ex);
         }
+        writeConfigFile();
     }
 
     public ScreensaverConfig copy() {
@@ -232,11 +252,15 @@ public final class ScreensaverConfig {
             }
             try {
                 if (key.equalsIgnoreCase("message")) {
-                    setMessage(value);
-                    changed = true;
+                    if (!isPlaceholder(value)) {
+                        setMessage(value);
+                        changed = true;
+                    }
                 } else if (key.equalsIgnoreCase("font-family") || key.equalsIgnoreCase("fontFamily")) {
-                    setFontFamily(value);
-                    changed = true;
+                    if (!isPlaceholder(value)) {
+                        setFontFamily(value);
+                        changed = true;
+                    }
                 } else if (key.equalsIgnoreCase("font-size") || key.equalsIgnoreCase("fontSize")) {
                     setFontSize(Integer.parseInt(value.trim()));
                     changed = true;
@@ -244,13 +268,17 @@ public final class ScreensaverConfig {
                     setPixelsPerSecond(Integer.parseInt(value.trim()));
                     changed = true;
                 } else if (key.equalsIgnoreCase("text-color") || key.equalsIgnoreCase("textColor")) {
-                    setTextColor(parseColor(value));
-                    changed = true;
+                    if (!isPlaceholder(value)) {
+                        setTextColor(parseColor(value));
+                        changed = true;
+                    }
                 } else if (key.equalsIgnoreCase("background-color")
                         || key.equalsIgnoreCase("backgroundColor")
                         || key.equalsIgnoreCase("bg-color")) {
-                    setBackgroundColor(parseColor(value));
-                    changed = true;
+                    if (!isPlaceholder(value)) {
+                        setBackgroundColor(parseColor(value));
+                        changed = true;
+                    }
                 }
             } catch (RuntimeException ex) {
                 LOG.log(Level.WARNING, "Ignoring screensaver option --" + key + " " + value, ex);
@@ -270,6 +298,97 @@ public final class ScreensaverConfig {
             return args[index + 1];
         }
         return null;
+    }
+
+    private static boolean isPlaceholder(String value) {
+        return value == null || value.isBlank() || value.equals("%");
+    }
+
+    static Path configFile() {
+        String xdg = System.getenv("XDG_CONFIG_HOME");
+        Path dir = xdg == null || xdg.isBlank()
+                ? Path.of(System.getProperty("user.home"), ".config", "goodys-marquee")
+                : Path.of(xdg, "goodys-marquee");
+        return dir.resolve("config.properties");
+    }
+
+    private void readConfigFile() {
+        Path file = configFile();
+        if (!Files.isRegularFile(file)) {
+            return;
+        }
+        Properties props = new Properties();
+        try (InputStream in = Files.newInputStream(file)) {
+            props.load(in);
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, "Unable to read " + file, ex);
+            return;
+        }
+        message = props.getProperty(KEY_MESSAGE, message);
+        fontFamily = props.getProperty(KEY_FONT_FAMILY, fontFamily);
+        fontSize = parseIntProperty(props, KEY_FONT_SIZE, fontSize);
+        bold = parseBooleanProperty(props, KEY_BOLD, bold);
+        italic = parseBooleanProperty(props, KEY_ITALIC, italic);
+        underline = parseBooleanProperty(props, KEY_UNDERLINE, underline);
+        pixelsPerSecond = parseIntProperty(props, KEY_PIXELS_PER_SECOND, pixelsPerSecond);
+        Color loadedText = parseStoredColor(props.getProperty(KEY_TEXT_COLOR));
+        if (loadedText != null) {
+            textColor = loadedText;
+        }
+        Color loadedBackground = parseStoredColor(props.getProperty(KEY_BACKGROUND_COLOR));
+        if (loadedBackground != null) {
+            backgroundColor = loadedBackground;
+        }
+    }
+
+    private void writeConfigFile() {
+        Path file = configFile();
+        Properties props = new Properties();
+        props.setProperty(KEY_MESSAGE, message == null ? "" : message);
+        props.setProperty(KEY_FONT_FAMILY, fontFamily);
+        props.setProperty(KEY_FONT_SIZE, Integer.toString(fontSize));
+        props.setProperty(KEY_BOLD, Boolean.toString(bold));
+        props.setProperty(KEY_ITALIC, Boolean.toString(italic));
+        props.setProperty(KEY_UNDERLINE, Boolean.toString(underline));
+        props.setProperty(KEY_TEXT_COLOR, toHex(textColor));
+        props.setProperty(KEY_BACKGROUND_COLOR, toHex(backgroundColor));
+        props.setProperty(KEY_PIXELS_PER_SECOND, Integer.toString(pixelsPerSecond));
+        try {
+            Files.createDirectories(file.getParent());
+            try (OutputStream out = Files.newOutputStream(file)) {
+                props.store(out, "Goody's Marquee");
+            }
+        } catch (IOException ex) {
+            LOG.log(Level.WARNING, "Unable to write " + file, ex);
+        }
+    }
+
+    private static int parseIntProperty(Properties props, String key, int fallback) {
+        try {
+            return Integer.parseInt(props.getProperty(key, Integer.toString(fallback)).trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    private static boolean parseBooleanProperty(Properties props, String key, boolean fallback) {
+        String raw = props.getProperty(key);
+        return raw == null ? fallback : Boolean.parseBoolean(raw);
+    }
+
+    private static Color parseStoredColor(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return parseColor(raw);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private static String toHex(Color color) {
+        return String.format("#%06X", color.getRGB() & 0xFFFFFF);
     }
 
     private static Color parseColor(String raw) {

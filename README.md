@@ -30,7 +30,8 @@ Bookworm and later default to Wayland (labwc), where XScreensaver settings often
 3. Open **XScreensaver settings** once (this creates `~/.xscreensaver`)
 4. Run `./install.sh` again (accept sudo so the Settings panel can be installed)
 5. Close and reopen XScreensaver settings, then pick **Goody's Marquee**
-6. Use **Settings** in that window, or **Goody's Marquee Settings** in the application menu
+6. Use **Settings** in that window (click **Close** to apply — that panel has no Save button), or **Goody's Marquee Settings** in the application menu and click **Save**
+7. Options are stored in `~/.config/goodys-marquee/config.properties`
 
 If you already opened XScreensaver settings before re-running the installer, that last `./install.sh` is the step that makes it appear in the list.
 

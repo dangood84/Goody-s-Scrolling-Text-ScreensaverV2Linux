@@ -140,10 +140,7 @@ public final class MarqueePanel extends JPanel {
      * {@link AttributedString}.
      */
     private AttributedString createAttributedText() {
-        String text = config.getMessage();
-        if (text == null || text.isBlank()) {
-            text = " ";
-        }
+        String text = config.displayMessage();
 
         // Use FAMILY/SIZE instead of FONT. If FONT is set, Java ignores WEIGHT and
         // POSTURE, which is why underline (a separate decoration) still worked.
