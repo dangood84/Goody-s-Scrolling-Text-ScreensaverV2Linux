@@ -48,13 +48,38 @@ Terminal=false
 EOF
 
 XSCREENSAVER_RC="$HOME/.xscreensaver"
-MARKER="GoodysMarquee"
-if [ -f "$XSCREENSAVER_RC" ] && ! grep -q "$MARKER" "$XSCREENSAVER_RC"; then
-    echo "Add this line to the programs: list in $XSCREENSAVER_RC :"
-    echo "  -                   \"Goody's Marquee\"  $PREFIX/goodys-marquee-screensaver --fullscreen \\n\\"
-elif [ ! -f "$XSCREENSAVER_RC" ]; then
-    echo "xscreensaver is optional. If you use it, add this program entry after installing xscreensaver:"
-    echo "  -                   \"Goody's Marquee\"  $PREFIX/goodys-marquee-screensaver --fullscreen \\n\\"
+MARKER="goodys-marquee-screensaver"
+ENTRY="                                \"Goody's Marquee\"  $PREFIX/goodys-marquee-screensaver --fullscreen \\n\\"
+if [ ! -f "$XSCREENSAVER_RC" ]; then
+    echo "No $XSCREENSAVER_RC yet. Open XScreensaver settings once to create it, then run ./install.sh again."
+    echo "Or add this line just below programs: in that file:"
+    echo "$ENTRY"
+elif grep -q "$MARKER" "$XSCREENSAVER_RC"; then
+    echo "Already listed in $XSCREENSAVER_RC"
+else
+    tmp="$(mktemp)"
+    awk_status=0
+    awk -v prefix="$PREFIX" '
+        {
+            print
+            if (!done && $0 ~ /^programs:/) {
+                printf "                                \"Goody'\''s Marquee\"  %s/goodys-marquee-screensaver --fullscreen \\n\\\n", prefix
+                done = 1
+            }
+        }
+        END { if (!done) exit 2 }
+    ' "$XSCREENSAVER_RC" > "$tmp" || awk_status=$?
+    if [ "$awk_status" -eq 0 ]; then
+        mv "$tmp" "$XSCREENSAVER_RC"
+        echo "Registered in $XSCREENSAVER_RC"
+        if command -v xscreensaver-command >/dev/null 2>&1; then
+            xscreensaver-command -restart >/dev/null 2>&1 || true
+        fi
+    else
+        rm -f "$tmp"
+        echo "Could not find a programs: list in $XSCREENSAVER_RC. Add this line manually:"
+        echo "$ENTRY"
+    fi
 fi
 
 echo "Installed to $PREFIX"
